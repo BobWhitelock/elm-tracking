@@ -6,11 +6,13 @@ Rails.application.configure do
   # since you don't have to restart the web server when you make code changes.
   config.cache_classes = false
 
-  # Do not eager load code on boot.
-  config.eager_load = false
+  # Eager load code on boot so JSONAPI-Resources resources are loaded and
+  # processed globally.
+  config.eager_load = true
 
-  # Show full error reports.
-  config.consider_all_requests_local = true
+  # Prevent server from returning the HTML formatted error messages when an
+  # exception happens.
+  config.consider_all_requests_local = false
 
   # Enable/disable caching. By default caching is disabled.
   if Rails.root.join('tmp/caching-dev.txt').exist?
