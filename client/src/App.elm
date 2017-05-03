@@ -1,21 +1,40 @@
 module App exposing (..)
 
-import Html exposing (Html, text, div, img)
-import Html.Attributes exposing (src)
+import Html exposing (..)
+import Http
+import RemoteData exposing (WebData, RemoteData(..))
+import Json.Decode as Decode exposing (Decoder)
 
 
 ---- MODEL ----
 
 
 type alias Model =
-    { message : String
-    , logo : String
+    { items : WebData (List Item) }
+
+
+type alias Item =
+    { name : String
     }
 
 
-init : String -> ( Model, Cmd Msg )
-init path =
-    ( { message = "Your Elm App is working!", logo = path }, Cmd.none )
+decodeItems : Decoder (List Item)
+decodeItems =
+    (Decode.field "data"
+        (Decode.list (decodeItem))
+    )
+
+
+decodeItem : Decoder Item
+decodeItem =
+    Decode.map
+        Item
+        (Decode.at [ "attributes", "name" ] Decode.string)
+
+
+init : ( Model, Cmd Msg )
+init =
+    ( { items = Loading }, getItems )
 
 
 
@@ -23,12 +42,30 @@ init path =
 
 
 type Msg
-    = NoOp
+    = ItemsResponse (WebData (List Item))
+
+
+getItems : Cmd Msg
+getItems =
+    let
+        itemsUrl =
+            apiUrl ++ "/items"
+    in
+        Http.get itemsUrl decodeItems
+            |> RemoteData.sendRequest
+            |> Cmd.map ItemsResponse
+
+
+apiUrl : String
+apiUrl =
+    "http://localhost:4000"
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    case msg of
+        ItemsResponse response ->
+            ( { model | items = response }, Cmd.none )
 
 
 
@@ -37,19 +74,32 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ img [ src model.logo ] []
-        , div [] [ text model.message ]
-        ]
+    case model.items of
+        NotAsked ->
+            text "Initializing..."
+
+        Loading ->
+            text "Loading..."
+
+        Failure error ->
+            text ("Error: " ++ toString error)
+
+        Success items ->
+            div [] (List.map viewItem items)
+
+
+viewItem : Item -> Html Msg
+viewItem item =
+    div [] [ text item.name ]
 
 
 
 ---- PROGRAM ----
 
 
-main : Program String Model Msg
+main : Program Never Model Msg
 main =
-    Html.programWithFlags
+    Html.program
         { view = view
         , init = init
         , update = update
